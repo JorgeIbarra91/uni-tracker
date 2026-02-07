@@ -1,0 +1,52 @@
+@import "tailwindcss";
+
+@theme {
+    --color-ios-bg: #f2f2f7;
+    --color-ios-card: #ffffff;
+    --color-ios-blue: #007aff;
+    --color-ios-blue-dark: #0056cc;
+    --color-ios-gray: #8e8e93;
+    --color-ios-gray-2: #aeaeb2;
+    --color-ios-gray-3: #c7c7cc;
+    --color-ios-gray-4: #d1d1d6;
+    --color-ios-gray-5: #e5e5ea;
+    --color-ios-gray-6: #f2f2f7;
+    --color-ios-red: #ff3b30;
+    --color-ios-green: #34c759;
+    --color-ios-orange: #ff9500;
+    --color-ios-separator: rgba(60, 60, 67, 0.12);
+}
+
+* {
+    -webkit-tap-highlight-color: transparent;
+    -webkit-touch-callout: none;
+}
+
+html {
+    font-family:
+        -apple-system, BlinkMacSystemFont, "SF Pro Display", "SF Pro Text",
+        "Helvetica Neue", system-ui, sans-serif;
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+}
+
+body {
+    margin: 0;
+    padding: 0;
+    background-color: #f2f2f7;
+    color: #1c1c1e;
+    min-height: 100dvh;
+    overflow-x: hidden;
+}
+
+#root {
+    min-height: 100dvh;
+    display: flex;
+    flex-direction: column;
+}
+
+input,
+textarea,
+select {
+    font-size: 16px !important;
+}
