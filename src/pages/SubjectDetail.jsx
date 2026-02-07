@@ -16,6 +16,7 @@ import {
   Presentation,
   BarChart3,
   Trash2,
+  PenLine,
 } from "lucide-react";
 import {
   format,
@@ -40,7 +41,7 @@ const EVAL_TYPES = [
 
 function getEvalIcon(type) {
   const found = EVAL_TYPES.find(
-    (t) => t.value === (type || "").toLowerCase().trim()
+    (t) => t.value === (type || "").toLowerCase().trim(),
   );
   return found?.icon || FileText;
 }
@@ -148,16 +149,35 @@ export default function SubjectDetail({ subjectId, session, onBack }) {
     const total = evaluations.length;
     const completed = evaluations.filter((e) => e.completed).length;
     const pending = total - completed;
+
+    const withGrade = evaluations.filter((e) => e.grade != null);
+    const gradeCount = withGrade.length;
+
+    // Simple average
     const avgGrade =
-      evaluations.filter((e) => e.grade != null).length > 0
+      gradeCount > 0
+        ? (withGrade.reduce((sum, e) => sum + e.grade, 0) / gradeCount).toFixed(
+            1,
+          )
+        : null;
+
+    // Weighted average (only evaluations that have BOTH grade and weight)
+    const withGradeAndWeight = evaluations.filter(
+      (e) => e.grade != null && e.weight != null && e.weight > 0,
+    );
+    const totalWeight = withGradeAndWeight.reduce(
+      (sum, e) => sum + e.weight,
+      0,
+    );
+    const weightedAvg =
+      withGradeAndWeight.length > 0 && totalWeight > 0
         ? (
-            evaluations
-              .filter((e) => e.grade != null)
-              .reduce((sum, e) => sum + e.grade, 0) /
-            evaluations.filter((e) => e.grade != null).length
+            withGradeAndWeight.reduce((sum, e) => sum + e.grade * e.weight, 0) /
+            totalWeight
           ).toFixed(1)
         : null;
-    return { total, completed, pending, avgGrade };
+
+    return { total, completed, pending, avgGrade, weightedAvg, gradeCount };
   }, [evaluations]);
 
   // ── Toggle completed ──────────────────────────────────────────────
@@ -173,11 +193,39 @@ export default function SubjectDetail({ subjectId, session, onBack }) {
     if (!error) {
       setEvaluations((prev) =>
         prev.map((e) =>
-          e.id === evalItem.id ? { ...e, completed: newCompleted } : e
-        )
+          e.id === evalItem.id ? { ...e, completed: newCompleted } : e,
+        ),
       );
     }
     setTogglingId(null);
+  };
+
+  // ── Update grade ──────────────────────────────────────────────────
+  const handleUpdateGrade = async (evalItem, newGrade) => {
+    // null means "clear grade", otherwise parse the float
+    const gradeValue =
+      newGrade === null || newGrade === "" ? null : parseFloat(newGrade);
+
+    // Validate: if it's a number, make sure it's reasonable
+    if (
+      gradeValue !== null &&
+      (isNaN(gradeValue) || gradeValue < 1 || gradeValue > 7)
+    ) {
+      return; // Silently reject invalid grades (Chilean scale 1.0 - 7.0)
+    }
+
+    const { error } = await supabase
+      .from("evaluations")
+      .update({ grade: gradeValue })
+      .eq("id", evalItem.id);
+
+    if (!error) {
+      setEvaluations((prev) =>
+        prev.map((e) =>
+          e.id === evalItem.id ? { ...e, grade: gradeValue } : e,
+        ),
+      );
+    }
   };
 
   // ── Delete evaluation ─────────────────────────────────────────────
@@ -225,9 +273,7 @@ export default function SubjectDetail({ subjectId, session, onBack }) {
     } else {
       setEvaluations((prev) => {
         const updated = [...prev, data];
-        updated.sort(
-          (a, b) => new Date(a.due_date) - new Date(b.due_date)
-        );
+        updated.sort((a, b) => new Date(a.due_date) - new Date(b.due_date));
         return updated;
       });
       closeModal();
@@ -302,8 +348,7 @@ export default function SubjectDetail({ subjectId, session, onBack }) {
               {subject.name}
             </h2>
             <p className="text-xs text-ios-gray">
-              {stats.total}{" "}
-              {stats.total === 1 ? "evaluación" : "evaluaciones"}
+              {stats.total} {stats.total === 1 ? "evaluación" : "evaluaciones"}
             </p>
           </div>
         </div>
@@ -312,10 +357,7 @@ export default function SubjectDetail({ subjectId, session, onBack }) {
       {/* Stats row */}
       <div className="grid grid-cols-3 gap-3">
         <div className="bg-ios-card rounded-2xl p-3.5 shadow-sm border border-ios-separator text-center">
-          <p
-            className="text-xl font-bold"
-            style={{ color: subjectColor }}
-          >
+          <p className="text-xl font-bold" style={{ color: subjectColor }}>
             {stats.pending}
           </p>
           <p className="text-[11px] text-ios-gray font-medium mt-0.5">
@@ -323,15 +365,21 @@ export default function SubjectDetail({ subjectId, session, onBack }) {
           </p>
         </div>
         <div className="bg-ios-card rounded-2xl p-3.5 shadow-sm border border-ios-separator text-center">
-          <p className="text-xl font-bold text-ios-green">
-            {stats.completed}
-          </p>
+          <p className="text-xl font-bold text-ios-green">{stats.completed}</p>
           <p className="text-[11px] text-ios-gray font-medium mt-0.5">
             Completadas
           </p>
         </div>
         <div className="bg-ios-card rounded-2xl p-3.5 shadow-sm border border-ios-separator text-center">
-          <p className="text-xl font-bold text-gray-900">
+          <p
+            className={`text-xl font-bold ${
+              stats.avgGrade !== null
+                ? parseFloat(stats.avgGrade) >= 4.0
+                  ? "text-ios-green"
+                  : "text-ios-red"
+                : "text-gray-900"
+            }`}
+          >
             {stats.avgGrade ?? "—"}
           </p>
           <p className="text-[11px] text-ios-gray font-medium mt-0.5">
@@ -339,6 +387,30 @@ export default function SubjectDetail({ subjectId, session, onBack }) {
           </p>
         </div>
       </div>
+
+      {/* Weighted average card (only if there are weighted grades) */}
+      {stats.weightedAvg !== null && (
+        <div className="bg-ios-card rounded-2xl p-4 shadow-sm border border-ios-separator flex items-center justify-between">
+          <div>
+            <p className="text-sm font-semibold text-gray-900">
+              Promedio Ponderado
+            </p>
+            <p className="text-[11px] text-ios-gray mt-0.5">
+              Basado en {stats.gradeCount}{" "}
+              {stats.gradeCount === 1 ? "nota" : "notas"} con ponderación
+            </p>
+          </div>
+          <p
+            className={`text-2xl font-bold ${
+              parseFloat(stats.weightedAvg) >= 4.0
+                ? "text-ios-green"
+                : "text-ios-red"
+            }`}
+          >
+            {stats.weightedAvg}
+          </p>
+        </div>
+      )}
 
       {/* ── Pending evaluations ──────────────────────────────────── */}
       <div>
@@ -350,9 +422,7 @@ export default function SubjectDetail({ subjectId, session, onBack }) {
           <div className="bg-ios-card rounded-2xl p-5 shadow-sm border border-ios-separator">
             <div className="flex flex-col items-center justify-center py-8 text-ios-gray-2">
               <ClipboardList size={40} strokeWidth={1.5} />
-              <p className="text-sm mt-3 text-ios-gray">
-                Sin evaluaciones aún
-              </p>
+              <p className="text-sm mt-3 text-ios-gray">Sin evaluaciones aún</p>
               <p className="text-xs mt-1 text-ios-gray-2">
                 Toca el botón{" "}
                 <span className="inline-flex items-center justify-center w-5 h-5 bg-ios-blue rounded-full text-white text-xs font-bold align-middle">
@@ -385,6 +455,7 @@ export default function SubjectDetail({ subjectId, session, onBack }) {
               subjectColor={subjectColor}
               onToggle={handleToggle}
               onDelete={handleDelete}
+              onUpdateGrade={handleUpdateGrade}
               togglingId={togglingId}
               deletingId={deletingId}
             />
@@ -406,6 +477,7 @@ export default function SubjectDetail({ subjectId, session, onBack }) {
                 subjectColor={subjectColor}
                 onToggle={handleToggle}
                 onDelete={handleDelete}
+                onUpdateGrade={handleUpdateGrade}
                 togglingId={togglingId}
                 deletingId={deletingId}
               />
@@ -449,9 +521,7 @@ export default function SubjectDetail({ subjectId, session, onBack }) {
                 <h2 className="text-lg font-semibold text-gray-900">
                   Nueva Evaluación
                 </h2>
-                <p className="text-xs text-ios-gray mt-0.5">
-                  {subject.name}
-                </p>
+                <p className="text-xs text-ios-gray mt-0.5">{subject.name}</p>
               </div>
               <button
                 onClick={closeModal}
@@ -594,13 +664,45 @@ function EvalCard({
   subjectColor,
   onToggle,
   onDelete,
+  onUpdateGrade,
   togglingId,
   deletingId,
 }) {
+  const [editingGrade, setEditingGrade] = useState(false);
+  const [gradeInput, setGradeInput] = useState(
+    evalItem.grade != null ? String(evalItem.grade) : "",
+  );
+  const [savingGrade, setSavingGrade] = useState(false);
+
   const EvalIcon = getEvalIcon(evalItem.type);
   const isCompleted = evalItem.completed;
   const isToggling = togglingId === evalItem.id;
   const isDeleting = deletingId === evalItem.id;
+
+  const handleGradeSave = async () => {
+    setSavingGrade(true);
+    await onUpdateGrade(evalItem, gradeInput === "" ? null : gradeInput);
+    setSavingGrade(false);
+    setEditingGrade(false);
+  };
+
+  const handleGradeKeyDown = (e) => {
+    if (e.key === "Enter") {
+      e.preventDefault();
+      handleGradeSave();
+    }
+    if (e.key === "Escape") {
+      setGradeInput(evalItem.grade != null ? String(evalItem.grade) : "");
+      setEditingGrade(false);
+    }
+  };
+
+  const gradeColor =
+    evalItem.grade != null
+      ? evalItem.grade >= 4.0
+        ? "text-ios-green"
+        : "text-ios-red"
+      : "text-ios-gray-2";
 
   return (
     <div
@@ -626,16 +728,11 @@ function EvalCard({
               disabled={isToggling}
               className="mt-0.5 shrink-0 active:scale-90 transition-transform"
               aria-label={
-                isCompleted
-                  ? "Marcar como pendiente"
-                  : "Marcar como completada"
+                isCompleted ? "Marcar como pendiente" : "Marcar como completada"
               }
             >
               {isToggling ? (
-                <Loader2
-                  size={22}
-                  className="animate-spin text-ios-gray-2"
-                />
+                <Loader2 size={22} className="animate-spin text-ios-gray-2" />
               ) : isCompleted ? (
                 <CheckCircle2
                   size={22}
@@ -656,9 +753,7 @@ function EvalCard({
               <div className="flex items-start justify-between gap-2">
                 <h4
                   className={`text-[15px] font-semibold truncate ${
-                    isCompleted
-                      ? "line-through text-ios-gray"
-                      : "text-gray-900"
+                    isCompleted ? "line-through text-ios-gray" : "text-gray-900"
                   }`}
                 >
                   {evalItem.title}
@@ -696,13 +791,6 @@ function EvalCard({
                     {evalItem.weight}%
                   </span>
                 )}
-
-                {/* Grade (read-only for now) */}
-                {evalItem.grade != null && (
-                  <span className="text-xs font-bold text-gray-900 bg-ios-gray-6 px-2 py-0.5 rounded-md">
-                    Nota: {evalItem.grade}
-                  </span>
-                )}
               </div>
 
               {/* Time left */}
@@ -711,16 +799,81 @@ function EvalCard({
                   {formatTimeLeft(evalItem.due_date)}
                 </p>
               )}
+
+              {/* ── Grade section ─────────────────────────────────── */}
+              <div className="mt-2.5 pt-2.5 border-t border-ios-separator">
+                {editingGrade ? (
+                  <div className="flex items-center gap-2">
+                    <label className="text-xs font-medium text-ios-gray shrink-0">
+                      Nota:
+                    </label>
+                    <input
+                      type="number"
+                      inputMode="decimal"
+                      value={gradeInput}
+                      onChange={(e) => setGradeInput(e.target.value)}
+                      onBlur={handleGradeSave}
+                      onKeyDown={handleGradeKeyDown}
+                      autoFocus
+                      min="1.0"
+                      max="7.0"
+                      step="0.1"
+                      placeholder="1.0 – 7.0"
+                      className="w-24 px-3 py-1.5 bg-ios-gray-6 text-gray-900 placeholder-ios-gray-3 rounded-lg outline-none text-[16px] font-semibold border border-ios-blue focus:ring-1 focus:ring-ios-blue/30 transition-all text-center"
+                    />
+                    {savingGrade && (
+                      <Loader2
+                        size={14}
+                        className="animate-spin text-ios-gray-2"
+                      />
+                    )}
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setGradeInput(
+                          evalItem.grade != null ? String(evalItem.grade) : "",
+                        );
+                        setEditingGrade(false);
+                      }}
+                      className="text-xs text-ios-gray active:scale-90"
+                    >
+                      Cancelar
+                    </button>
+                  </div>
+                ) : (
+                  <button
+                    onClick={() => setEditingGrade(true)}
+                    className="flex items-center gap-2 group active:scale-[0.97] transition-transform w-full"
+                  >
+                    {evalItem.grade != null ? (
+                      <>
+                        <span className="text-xs font-medium text-ios-gray">
+                          Nota:
+                        </span>
+                        <span className={`text-lg font-bold ${gradeColor}`}>
+                          {evalItem.grade}
+                        </span>
+                        <PenLine
+                          size={12}
+                          className="text-ios-gray-3 group-hover:text-ios-blue transition-colors ml-1"
+                          strokeWidth={2}
+                        />
+                      </>
+                    ) : (
+                      <span className="inline-flex items-center gap-1.5 text-xs font-medium text-ios-blue bg-ios-blue/8 px-3 py-1.5 rounded-lg hover:bg-ios-blue/15 transition-colors">
+                        <PenLine size={13} strokeWidth={2} />
+                        Agregar nota
+                      </span>
+                    )}
+                  </button>
+                )}
+              </div>
             </div>
 
             {/* Delete */}
             <button
               onClick={() => {
-                if (
-                  window.confirm(
-                    `¿Eliminar "${evalItem.title}"?`
-                  )
-                ) {
+                if (window.confirm(`¿Eliminar "${evalItem.title}"?`)) {
                   onDelete(evalItem);
                 }
               }}
