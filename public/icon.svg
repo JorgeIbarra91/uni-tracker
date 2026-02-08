@@ -1,0 +1,37 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512">
+  <defs>
+    <linearGradient id="bg" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0%" stop-color="#0A84FF"/>
+      <stop offset="100%" stop-color="#0056CC"/>
+    </linearGradient>
+    <linearGradient id="page" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0%" stop-color="#FFFFFF"/>
+      <stop offset="100%" stop-color="#F0F0F5"/>
+    </linearGradient>
+  </defs>
+  <!-- Rounded square background -->
+  <rect width="512" height="512" rx="112" ry="112" fill="url(#bg)"/>
+  <!-- Calendar/notebook body -->
+  <rect x="120" y="140" width="272" height="260" rx="28" ry="28" fill="url(#page)"/>
+  <!-- Top binding bar -->
+  <rect x="120" y="140" width="272" height="56" rx="28" ry="28" fill="#E8E8ED"/>
+  <rect x="120" y="168" width="272" height="28" fill="#E8E8ED"/>
+  <!-- Binding rings -->
+  <rect x="184" y="118" width="16" height="56" rx="8" fill="#FFFFFF" opacity="0.9"/>
+  <rect x="248" y="118" width="16" height="56" rx="8" fill="#FFFFFF" opacity="0.9"/>
+  <rect x="312" y="118" width="16" height="56" rx="8" fill="#FFFFFF" opacity="0.9"/>
+  <!-- Check line 1 -->
+  <rect x="168" y="230" width="176" height="10" rx="5" fill="#0A84FF" opacity="0.25"/>
+  <circle cx="156" cy="235" r="11" fill="#34C759"/>
+  <polyline points="150,235 154,239 162,231" fill="none" stroke="#FFFFFF" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"/>
+  <!-- Check line 2 -->
+  <rect x="168" y="272" width="140" height="10" rx="5" fill="#0A84FF" opacity="0.25"/>
+  <circle cx="156" cy="277" r="11" fill="#34C759"/>
+  <polyline points="150,277 154,281 162,273" fill="none" stroke="#FFFFFF" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"/>
+  <!-- Pending line 3 -->
+  <rect x="168" y="314" width="160" height="10" rx="5" fill="#0A84FF" opacity="0.15"/>
+  <circle cx="156" cy="319" r="11" fill="none" stroke="#C7C7CC" stroke-width="2.5"/>
+  <!-- Pending line 4 -->
+  <rect x="168" y="356" width="120" height="10" rx="5" fill="#0A84FF" opacity="0.15"/>
+  <circle cx="156" cy="361" r="11" fill="none" stroke="#C7C7CC" stroke-width="2.5"/>
+</svg>

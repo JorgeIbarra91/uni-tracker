@@ -2,13 +2,32 @@
 <html lang="es">
     <head>
         <meta charset="UTF-8" />
-        <link rel="icon" type="image/svg+xml" href="/vite.svg" />
+
+        <!-- PWA & Mobile -->
         <meta
             name="viewport"
-            content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=0"
+            content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=0, viewport-fit=cover"
         />
+        <meta name="theme-color" content="#007AFF" />
         <meta name="apple-mobile-web-app-capable" content="yes" />
         <meta name="apple-mobile-web-app-status-bar-style" content="default" />
+        <meta name="apple-mobile-web-app-title" content="uni-tracker" />
+        <meta name="application-name" content="uni-tracker" />
+        <meta
+            name="description"
+            content="Controla tus ramos, evaluaciones y notas universitarias. Recibe recordatorios antes de cada entrega."
+        />
+
+        <!-- Manifest -->
+        <link rel="manifest" href="/manifest.json" />
+
+        <!-- Icons -->
+        <link rel="icon" type="image/svg+xml" href="/icon.svg" />
+        <link rel="apple-touch-icon" href="/icon.svg" />
+
+        <!-- Splash screen color while loading on iOS -->
+        <meta name="msapplication-TileColor" content="#007AFF" />
+
         <title>uni-tracker</title>
     </head>
     <body>

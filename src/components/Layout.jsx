@@ -1,13 +1,22 @@
 import { useState } from "react";
-import { Home, BookOpen, User, LogOut, ArrowLeft } from "lucide-react";
+import {
+  Home,
+  BookOpen,
+  CalendarDays,
+  User,
+  LogOut,
+  ArrowLeft,
+} from "lucide-react";
 import { supabase } from "../lib/supabaseClient";
 import Dashboard from "../pages/Dashboard";
 import Subjects from "../pages/Subjects";
 import SubjectDetail from "../pages/SubjectDetail";
+import Agenda from "../pages/Agenda";
 
 const tabs = [
   { id: "dashboard", label: "Inicio", icon: Home },
   { id: "subjects", label: "Ramos", icon: BookOpen },
+  { id: "agenda", label: "Agenda", icon: CalendarDays },
   { id: "profile", label: "Perfil", icon: User },
 ];
 
@@ -106,6 +115,8 @@ export default function Layout({ session }) {
         return (
           <Subjects session={session} onSelectSubject={handleSelectSubject} />
         );
+      case "agenda":
+        return <Agenda session={session} />;
       case "profile":
         return <ProfilePage session={session} />;
       default:

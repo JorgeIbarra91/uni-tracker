@@ -1,0 +1,26 @@
+{
+  "name": "uni-tracker — Control de Ramos",
+  "short_name": "uni-tracker",
+  "description": "Controla tus ramos, evaluaciones y notas universitarias. Recibe recordatorios antes de cada entrega.",
+  "start_url": "/",
+  "display": "standalone",
+  "orientation": "portrait",
+  "background_color": "#f2f2f7",
+  "theme_color": "#007AFF",
+  "categories": ["education", "productivity"],
+  "lang": "es",
+  "icons": [
+    {
+      "src": "/icon.svg",
+      "sizes": "any",
+      "type": "image/svg+xml",
+      "purpose": "any"
+    },
+    {
+      "src": "/icon.svg",
+      "sizes": "any",
+      "type": "image/svg+xml",
+      "purpose": "maskable"
+    }
+  ]
+}

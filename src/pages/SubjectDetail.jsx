@@ -206,12 +206,12 @@ export default function SubjectDetail({ subjectId, session, onBack }) {
     const gradeValue =
       newGrade === null || newGrade === "" ? null : parseFloat(newGrade);
 
-    // Validate: if it's a number, make sure it's reasonable
+    // Validate: if it's a number, make sure it's reasonable (Chilean scale 1.0 - 7.0)
     if (
       gradeValue !== null &&
       (isNaN(gradeValue) || gradeValue < 1 || gradeValue > 7)
     ) {
-      return; // Silently reject invalid grades (Chilean scale 1.0 - 7.0)
+      return { valid: false, message: "La nota debe estar entre 1.0 y 7.0" };
     }
 
     const { error } = await supabase
@@ -226,6 +226,8 @@ export default function SubjectDetail({ subjectId, session, onBack }) {
         ),
       );
     }
+
+    return { valid: true };
   };
 
   // ── Delete evaluation ─────────────────────────────────────────────
@@ -246,18 +248,54 @@ export default function SubjectDetail({ subjectId, session, onBack }) {
   // ── Create evaluation ─────────────────────────────────────────────
   const handleCreate = async (e) => {
     e.preventDefault();
-    if (!formTitle.trim()) return;
+    setError(null);
+
+    // ── Validation: title required ──────────────────────────────
+    if (!formTitle.trim()) {
+      setError("El título de la evaluación es obligatorio.");
+      return;
+    }
+
+    // ── Validation: due date required & not in the past ─────────
+    if (!formDueDate) {
+      setError("La fecha de entrega es obligatoria.");
+      return;
+    }
+
+    const dueDateObj = new Date(formDueDate);
+    if (isNaN(dueDateObj.getTime())) {
+      setError("La fecha ingresada no es válida.");
+      return;
+    }
+
+    if (isPast(dueDateObj)) {
+      setError("La fecha de entrega no puede estar en el pasado.");
+      return;
+    }
+
+    // ── Validation: weight in range 0-100 ───────────────────────
+    if (formWeight !== "" && formWeight != null) {
+      const w = parseFloat(formWeight);
+      if (isNaN(w)) {
+        setError("La ponderación debe ser un número válido.");
+        return;
+      }
+      if (w < 0 || w > 100) {
+        setError("La ponderación debe estar entre 0% y 100%.");
+        return;
+      }
+    }
 
     setSaving(true);
-    setError(null);
 
     const payload = {
       user_id: userId,
       subject_id: subjectId,
       title: formTitle.trim(),
       type: formType,
-      due_date: new Date(formDueDate).toISOString(),
-      weight: formWeight ? parseFloat(formWeight) : null,
+      due_date: dueDateObj.toISOString(),
+      weight:
+        formWeight !== "" && formWeight != null ? parseFloat(formWeight) : null,
       grade: null,
       completed: false,
     };
@@ -673,6 +711,7 @@ function EvalCard({
     evalItem.grade != null ? String(evalItem.grade) : "",
   );
   const [savingGrade, setSavingGrade] = useState(false);
+  const [gradeError, setGradeError] = useState(null);
 
   const EvalIcon = getEvalIcon(evalItem.type);
   const isCompleted = evalItem.completed;
@@ -680,10 +719,31 @@ function EvalCard({
   const isDeleting = deletingId === evalItem.id;
 
   const handleGradeSave = async () => {
+    setGradeError(null);
+
+    // Client-side validation before saving
+    if (gradeInput !== "" && gradeInput != null) {
+      const val = parseFloat(gradeInput);
+      if (isNaN(val) || val < 1 || val > 7) {
+        setGradeError("Nota entre 1.0 y 7.0");
+        return;
+      }
+    }
+
     setSavingGrade(true);
-    await onUpdateGrade(evalItem, gradeInput === "" ? null : gradeInput);
+    const result = await onUpdateGrade(
+      evalItem,
+      gradeInput === "" ? null : gradeInput,
+    );
     setSavingGrade(false);
+
+    if (result && !result.valid) {
+      setGradeError(result.message);
+      return;
+    }
+
     setEditingGrade(false);
+    setGradeError(null);
   };
 
   const handleGradeKeyDown = (e) => {
@@ -693,6 +753,7 @@ function EvalCard({
     }
     if (e.key === "Escape") {
       setGradeInput(evalItem.grade != null ? String(evalItem.grade) : "");
+      setGradeError(null);
       setEditingGrade(false);
     }
   };
@@ -803,42 +864,59 @@ function EvalCard({
               {/* ── Grade section ─────────────────────────────────── */}
               <div className="mt-2.5 pt-2.5 border-t border-ios-separator">
                 {editingGrade ? (
-                  <div className="flex items-center gap-2">
-                    <label className="text-xs font-medium text-ios-gray shrink-0">
-                      Nota:
-                    </label>
-                    <input
-                      type="number"
-                      inputMode="decimal"
-                      value={gradeInput}
-                      onChange={(e) => setGradeInput(e.target.value)}
-                      onBlur={handleGradeSave}
-                      onKeyDown={handleGradeKeyDown}
-                      autoFocus
-                      min="1.0"
-                      max="7.0"
-                      step="0.1"
-                      placeholder="1.0 – 7.0"
-                      className="w-24 px-3 py-1.5 bg-ios-gray-6 text-gray-900 placeholder-ios-gray-3 rounded-lg outline-none text-[16px] font-semibold border border-ios-blue focus:ring-1 focus:ring-ios-blue/30 transition-all text-center"
-                    />
-                    {savingGrade && (
-                      <Loader2
-                        size={14}
-                        className="animate-spin text-ios-gray-2"
+                  <div className="space-y-1.5">
+                    <div className="flex items-center gap-2">
+                      <label className="text-xs font-medium text-ios-gray shrink-0">
+                        Nota:
+                      </label>
+                      <input
+                        type="number"
+                        inputMode="decimal"
+                        value={gradeInput}
+                        onChange={(e) => {
+                          setGradeInput(e.target.value);
+                          setGradeError(null);
+                        }}
+                        onBlur={handleGradeSave}
+                        onKeyDown={handleGradeKeyDown}
+                        autoFocus
+                        min="1.0"
+                        max="7.0"
+                        step="0.1"
+                        placeholder="1.0 – 7.0"
+                        className={`w-24 px-3 py-1.5 bg-ios-gray-6 text-gray-900 placeholder-ios-gray-3 rounded-lg outline-none text-[16px] font-semibold border focus:ring-1 transition-all text-center ${
+                          gradeError
+                            ? "border-ios-red focus:ring-ios-red/30"
+                            : "border-ios-blue focus:ring-ios-blue/30"
+                        }`}
                       />
+                      {savingGrade && (
+                        <Loader2
+                          size={14}
+                          className="animate-spin text-ios-gray-2"
+                        />
+                      )}
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setGradeInput(
+                            evalItem.grade != null
+                              ? String(evalItem.grade)
+                              : "",
+                          );
+                          setGradeError(null);
+                          setEditingGrade(false);
+                        }}
+                        className="text-xs text-ios-gray active:scale-90"
+                      >
+                        Cancelar
+                      </button>
+                    </div>
+                    {gradeError && (
+                      <p className="text-[11px] text-ios-red font-medium ml-0.5">
+                        ⚠️ {gradeError}
+                      </p>
                     )}
-                    <button
-                      type="button"
-                      onClick={() => {
-                        setGradeInput(
-                          evalItem.grade != null ? String(evalItem.grade) : "",
-                        );
-                        setEditingGrade(false);
-                      }}
-                      className="text-xs text-ios-gray active:scale-90"
-                    >
-                      Cancelar
-                    </button>
                   </div>
                 ) : (
                   <button
