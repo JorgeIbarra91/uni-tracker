@@ -169,7 +169,7 @@ export async function checkUpcomingEvaluations(userId) {
         sendBrowserNotification(
           `⚠️ ${evalItem.title}`,
           `${evalItem.subjectName} — Entrega hoy a las ${evalItem.timeStr}. ${hoursText}`,
-          `eval-${evalItem.id}`
+          `eval-${evalItem.id}`,
         );
 
         markAsNotified(evalItem.id);

@@ -3,6 +3,7 @@ import {
   Home,
   BookOpen,
   CalendarDays,
+  Calendar as Calendaricon,
   User,
   LogOut,
   ArrowLeft,
@@ -12,11 +13,13 @@ import Dashboard from "../pages/Dashboard";
 import Subjects from "../pages/Subjects";
 import SubjectDetail from "../pages/SubjectDetail";
 import Agenda from "../pages/Agenda";
+import Calendar from "../pages/Calendar";
 
 const tabs = [
   { id: "dashboard", label: "Inicio", icon: Home },
   { id: "subjects", label: "Ramos", icon: BookOpen },
   { id: "agenda", label: "Agenda", icon: CalendarDays },
+  { id: "calendar", label: "Calendario", icon: CalendarIcon },
   { id: "profile", label: "Perfil", icon: User },
 ];
 
